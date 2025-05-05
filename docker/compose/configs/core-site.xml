@@ -1,0 +1,25 @@
+<configuration>
+  <!-- Configuración básica (ideal para single-node) -->
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://namenode:9000</value>  <!-- Mismo que en docker-compose -->
+  </property>
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>/hadoop/tmp</value>
+  </property>
+
+  <!-- Optimizaciones específicas para single-node -->
+  <property>
+    <name>io.file.buffer.size</name>
+    <value>262144</value>  <!-- 256KB (mejor para alto throughput en nodo único) -->
+  </property>
+  <property>
+    <name>hadoop.proxyuser.root.hosts</name>
+    <value>*</value>       <!-- Permite todas las conexiones (seguro solo en desarrollo) -->
+  </property>
+  <property>
+    <name>fs.hdfs.impl.disable.cache</name>
+    <value>true</value>    <!-- Evita problemas de caché en contenedores -->
+  </property>
+</configuration>

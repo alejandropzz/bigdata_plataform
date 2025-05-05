@@ -1,0 +1,193 @@
+version: '3.7'
+
+networks:
+  hadoop_net:
+    driver: bridge
+
+services:
+  namenode:
+    container_name: namenode_container
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-namenode
+    hostname: namenode
+    environment:
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+      CLUSTER_NAME: hadoop-cluster
+    networks:
+      - hadoop_net
+    volumes:
+      - ./docker/compose/configs:/opt/hadoop/etc/hadoop:ro
+      - hadoop_namenode:/hadoop/dfs/name
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+      - "8020:8020"
+    command: >
+      bash -c "
+      hdfs namenode -format -force || true;
+      exec hdfs namenode"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus | grep -q 'active'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1GB
+
+  datanode:
+    container_name: datanode_container
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-datanode
+    hostname: datanode
+    environment:
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+      CLUSTER_NAME: hadoop-cluster
+    networks:
+      - hadoop_net
+    volumes:
+      - ./docker/compose/configs:/opt/hadoop/etc/hadoop:ro
+      - hadoop_datanode:/hadoop/dfs/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1GB
+    # Nuevo
+    command: >
+      bash -c "
+      while ! curl -sf http://namenode:9870/ >/dev/null; do
+        echo 'Esperando a NameNode...';
+        sleep 5;
+      done;
+      exec hdfs datanode"
+    restart: unless-stopped
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  resourcemanager:
+    container_name: resourcemanager_container
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-resourcemanager
+    hostname: resourcemanager
+    environment:
+      SKIP_CONF_GENERATION: "true"
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+      YARN_CONF_DIR: /opt/hadoop/etc/hadoop
+      CLUSTER_NAME: hadoop-cluster
+    networks:
+        - hadoop_net
+    entrypoint: ["bash", "-c", "exec yarn resourcemanager"]  # 👈 Anula el entrypoint original
+    volumes:
+      - ./docker/compose/configs:/opt/hadoop/etc/hadoop:ro
+      - hadoop_yarn_logs:/hadoop/yarn/logs
+    ports:
+      - "8088:8088"  # Web UI
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://resourcemanager:8088/ws/v1/cluster/info || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      - namenode
+      - datanode
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2GB
+
+  nodemanager:
+    container_name: nodemanager_container
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-resourcemanager
+    hostname: nodemanager
+    environment:
+      SKIP_CONF_GENERATION: "true" #Verificar
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+      YARN_CONF_DIR: /opt/hadoop/etc/hadoop
+      CLUSTER_NAME: hadoop-cluster
+    networks:
+      - hadoop_net
+    entrypoint: ["bash", "-c", "exec yarn nodemanager"]
+    volumes:
+      - ./docker/compose/configs:/opt/hadoop/etc/hadoop:ro
+      - hadoop_yarn_logs:/hadoop/yarn/logs
+    depends_on:
+      - resourcemanager
+    deploy:
+      resources:
+        limits:
+          cpus: '6'
+          memory: 12GB
+  zoo:
+    image: zookeeper:3.6
+    container_name: zoo
+    ports:
+      - "2181:2181"  # Puerto expuesto para Zookeeper
+    networks:
+      - hadoop_net
+
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.2.1
+    container_name: kafka
+    depends_on:
+      - zoo
+    ports:
+      - "9092:9092"  # Mapeo para acceso externo (OUTSIDE)
+      - "9093:9093"  # Opcional: solo si usas OUTSIDE en 9093
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zoo:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      # Listeners (¡sin espacios después de comas!)
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
+      # Advertised Listeners (DNS interno + IP externa)
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      # Mapeo de protocolos
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      # Listener interno para comunicación entre brokers
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+    networks:
+      - hadoop_net
+  kafka_manager:
+    image: hlebalbau/kafka-manager:2.0.0.2
+    container_name: kafka_manager
+    ports:
+      - "9001:9000"
+    environment:
+      - ZK_HOSTS=zoo:2181
+      - KAFKA_MANAGER_AUTH_ENABLED=true
+      - KAFKA_MANAGER_USERNAME=hai
+      - KAFKA_MANAGER_PASSWORD=hai
+    command: -Dpidfile.path=/dev/null
+    networks:
+      - hadoop_net
+
+  postgres:
+    image: postgres:latest
+    container_name: shopping_cart_postgres
+    environment:
+      - "TZ=Europe/Amsterdam"
+      - "POSTGRES_USER=shopping_cart"
+      - "POSTGRES_PASSWORD=shopping_cart"
+    ports:
+      - "5432:5432"  # credentials (shopping_cart:shopping_cart)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hadoop_net
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_yarn_logs:
+  postgres_data:

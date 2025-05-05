@@ -1,0 +1,22 @@
+<configuration>
+  <property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>2048</value>  <!-- 2GB por mapper -->
+  </property>
+  <property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>4096</value>  <!-- 4GB por reducer -->
+  </property>
+  <property>
+    <name>mapreduce.map.java.opts</name>
+    <value>-Xmx1638m</value>  <!-- Heap para mappers (80% de 2048MB) -->
+  </property>
+  <property>
+    <name>mapreduce.reduce.java.opts</name>
+    <value>-Xmx3276m</value>  <!-- Heap para reducers (80% de 4096MB) -->
+  </property>
+  <property>
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>  <!-- Ejecución en YARN -->
+  </property>
+</configuration>

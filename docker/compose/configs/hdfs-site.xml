@@ -1,0 +1,43 @@
+<configuration>
+  <!-- Configuración ESSENCIAL para single-node -->
+  <property>
+    <name>dfs.replication</name>
+    <value>1</value>  <!-- No hay otros nodos para replicar -->
+  </property>
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>/hadoop/dfs/name</value>
+  </property>
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>/hadoop/dfs/data</value>
+  </property>
+
+  <!-- Optimización para SINGLE-NODE (8 cores/16GB) -->
+  <property>
+    <name>dfs.blocksize</name>
+    <value>128m</value>  <!-- 128MB (mejor para datasets pequeños/medianos en un nodo) -->
+  </property>
+  <property>
+    <name>dfs.datanode.max.transfer.threads</name>
+    <value>2048</value>  <!-- Mitad de hilos (suficiente para un solo nodo) -->
+  </property>
+  <property>
+    <name>dfs.namenode.handler.count</name>
+    <value>16</value>    <!-- Reduce hilos del NameNode (menos concurrencia necesaria) -->
+  </property>
+  <property>
+    <name>dfs.client.use.datanode.hostname</name>
+    <value>true</value>   <!-- Obligatorio en Docker -->
+  </property>
+
+  <!-- Parámetros CRÍTICOS para single-node -->
+  <property>
+    <name>dfs.permissions.enabled</name>
+    <value>false</value>  <!-- Desactiva permisos (solo para desarrollo/local) -->
+  </property>
+  <property>
+    <name>dfs.namenode.safemode.threshold-pct</name>
+    <value>0.8</value>    <!-- Sale más rápido del safemode (80% de bloques reportados) -->
+  </property>
+</configuration>

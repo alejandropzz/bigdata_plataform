@@ -1,0 +1,39 @@
+<configuration>
+  <!-- Config básica -->
+  <property>
+    <name>yarn.resourcemanager.hostname</name>
+    <value>resourcemanager</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.aux-services</name>
+    <value>mapreduce_shuffle</value>
+  </property>
+
+  <!-- Recursos para single-node -->
+  <property>
+    <name>yarn.nodemanager.resource.cpu-vcores</name>
+    <value>6</value>  <!-- 6 cores para tasks (deja 2 para sistema) -->
+  </property>
+  <property>
+    <name>yarn.nodemanager.resource.memory-mb</name>
+    <value>12288</value>  <!-- 12GB (75% de 16GB) -->
+  </property>
+  <property>
+    <name>yarn.scheduler.maximum-allocation-mb</name>
+    <value>12288</value>  <!-- Permite contenedores de hasta 12GB (1 contenedor grande) -->
+  </property>
+  <property>
+    <name>yarn.scheduler.minimum-allocation-mb</name>
+    <value>1024</value>  <!-- 1GB mínimo -->
+  </property>
+
+  <!-- Optimizaciones para single-node -->
+  <property>
+    <name>yarn.nodemanager.vmem-check-enabled</name>
+    <value>false</value>  <!-- Evita kills por memoria virtual -->
+  </property>
+  <property>
+    <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>
+    <value>0.8</value>  <!-- Permite más contenedores concurrentes -->
+  </property>
+</configuration>

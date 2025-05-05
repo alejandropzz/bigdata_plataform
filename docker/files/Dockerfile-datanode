@@ -1,0 +1,7 @@
+FROM apache/hadoop:3.3.6
+USER root
+# Configs específicas para DataNode
+RUN mkdir -p /hadoop/dfs/data && \
+    chown -R hadoop:hadoop /hadoop
+COPY ./docker/compose/configs/ /opt/hadoop/etc/hadoop/
+USER hadoop
