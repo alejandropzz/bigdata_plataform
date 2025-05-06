@@ -1,39 +1,3 @@
-#FROM apache/hadoop:3.3.6
-#USER root
-#RUN mkdir -p /hadoop/dfs/name && \
-#    mkdir -p /hadoop/yarn/logs && \ 
-#    chown -R hadoop:hadoop /hadoop
-
-# Comandos para permisos en configs
-#RUN chown -R hadoop:hadoop /opt/hadoop/etc/hadoop && \
-#    chmod -R 775 /opt/hadoop/etc/hadoop  # Permisos de escritura para el grupo
-
-
-#COPY ./docker/compose/configs/ /opt/hadoop/etc/hadoop/
-#USER hadoop
-
-#-----------------------------------
-
-#FROM apache/hadoop:3.3.6
-#USER root
-
-# Crear directorios y permisos
-#RUN mkdir -p /hadoop/dfs/name && \
-#    mkdir -p /hadoop/yarn/logs && \
-#    chown -R hadoop:hadoop /hadoop && \
-#    mkdir -p /opt/hadoop/etc/hadoop && \
-#    chown -R hadoop:hadoop /opt/hadoop/etc/hadoop && \
-#    chmod -R 777 /opt/hadoop/etc/hadoop
-
-# Copiar configuraciones
-#COPY ./docker/compose/configs/ /opt/hadoop/etc/hadoop/
-
-# Asegurar permisos finales
-#RUN chown -R hadoop:hadoop /opt/hadoop/etc/hadoop && \
-#    chmod -R 777 /opt/hadoop/etc/hadoop
-
-#USER hadoop
-
 FROM apache/hadoop:3.3.6
 USER root
 

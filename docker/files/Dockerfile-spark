@@ -1,0 +1,26 @@
+FROM bitnami/spark:latest
+
+USER root
+
+# 1. Elimina los templates originales
+RUN rm -f /opt/bitnami/spark/conf/*.template
+
+# 2. Deshabilita completamente la generación de templates
+RUN sed -i '/copy_default_conf()/,/^}/d' /opt/bitnami/scripts/libspark.sh && \
+    sed -i '/copy_default_conf/d' /opt/bitnami/scripts/spark/run.sh
+
+
+# 1. Configuración base
+RUN mkdir -p /tmp/.ivy2 && \
+    chmod 777 /tmp/.ivy2 && \
+    ln -s /tmp/.ivy2 /root/.ivy2 && \  # ¡Clave para resolver el error de Ivy!
+    chmod 644 /opt/bitnami/spark/examples/jars/*.jar
+
+# 2. Variables de entorno
+ENV HADOOP_CONF_DIR=/opt/bitnami/spark/conf \
+    SPARK_JARS_IVY=/tmp/.ivy2 \
+    SPARK_USER=root
+
+# 3. Copia configs
+COPY ./docker/compose/configs/*.xml ./docker/compose/configs/*.properties /opt/bitnami/spark/conf/
+RUN chmod 644 /opt/bitnami/spark/conf/*.xml

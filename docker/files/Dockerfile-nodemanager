@@ -1,21 +1,11 @@
-#FROM apache/hadoop:3.3.6
-#USER root
-#RUN mkdir -p /hadoop/yarn/logs && \ 
-#    chown -R hadoop:hadoop /hadoop
-#COPY ./docker/compose/configs/ /opt/hadoop/etc/hadoop/
-#USER hadoop
-
-
 FROM apache/hadoop:3.3.6
 USER root
 
-# Crea directorios y asigna permisos en un solo RUN (reduce capas)
 RUN mkdir -p /hadoop/{dfs/name,yarn/logs} /opt/hadoop/etc/hadoop && \
     chown -R hadoop:hadoop /hadoop /opt/hadoop/etc/hadoop && \
     chmod -R 775 /opt/hadoop/etc/hadoop && \
     rm -f /opt/hadoop/etc/hadoop/*.raw  # 👈 Elimina .raw ANTES de copiar
 
-# Copia configs (se sobreescriben si existen)
 COPY ./docker/compose/configs/ /opt/hadoop/etc/hadoop/
 
 USER hadoop

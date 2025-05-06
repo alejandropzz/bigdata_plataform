@@ -186,8 +186,62 @@ services:
     networks:
       - hadoop_net
 
+
+  spark:
+    container_name: spark_container
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-spark
+    hostname: spark
+    environment:
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf  # Corregido para bitnami
+      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf  # Usa la misma ruta que el Dockerfile
+      - YARN_CONF_DIR=/opt/bitnami/spark/conf
+      - SPARK_MASTER=yarn
+      - SPARK_SUBMIT_OPTIONS="--conf spark.jars.ivy=/tmp/.ivy2"  # Solución Ivy
+    networks:
+      - hadoop_net
+    volumes:
+      - ./docker/compose/configs:/opt/bitnami/spark/conf:rw  # Ruta bitnami
+    ports:
+      - "4040:4040"  # Spark UI
+    healthcheck:
+      test: ["CMD-SHELL", "netstat -tuln | grep 4040 || exit 1"]  # Más eficiente que curl
+      interval: 10s
+      timeout: 2s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4GB
+    command: >
+      bash -c "
+      until ping -c1 resourcemanager &>/dev/null; do
+        echo 'Esperando a ResourceManager...';
+        sleep 5;
+      done;
+      tail -f /dev/null"
+
+  jupyter-scala:
+      container_name:jupyter-scala
+      image: jupyter/all-spark-notebook:latest  # Ya incluye Toree
+      ports:
+        - "8888:8888"
+      volumes:
+        - ./notebooks:/home/jovyan/work  # Tus notebooks aquí
+        - ~/.ivy2:/home/jovyan/.ivy2     # Cache de dependencias
+      environment:
+        - SPARK_MASTER=yarn://resourcemanager:8032  # Usa tu cluster YARN
+      depends_on:
+        - spark
+      networks:
+        - hadoop_net
+
+
 volumes:
   hadoop_namenode:
   hadoop_datanode:
   hadoop_yarn_logs:
   postgres_data:
+  spark_logs:

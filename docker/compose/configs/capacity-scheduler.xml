@@ -1,10 +1,10 @@
 <configuration>
   <property>
     <name>yarn.scheduler.capacity.root.queues</name>
-    <value>default</value>
+    <value>default</value>  <!-- Cola obligatoria -->
   </property>
   <property>
     <name>yarn.scheduler.capacity.root.default.capacity</name>
-    <value>100</value>
+    <value>100</value>  <!-- 100% de recursos -->
   </property>
 </configuration>
