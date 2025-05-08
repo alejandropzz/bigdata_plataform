@@ -14,6 +14,7 @@ services:
     environment:
       HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
       CLUSTER_NAME: hadoop-cluster
+      TZ: America/Mexico_City
     networks:
       - hadoop_net
     volumes:
@@ -23,10 +24,18 @@ services:
       - "9870:9870"
       - "9000:9000"
       - "8020:8020"
+
     command: >
       bash -c "
-      hdfs namenode -format -force || true;
+      if [ ! -d /hadoop/dfs/name/current ]; then
+        echo 'Formateando NameNode por primera vez...';
+        hdfs namenode -format;
+      fi;
       exec hdfs namenode"
+#    command: >
+#      bash -c "
+#      hdfs namenode -format -force || true;
+#      exec hdfs namenode"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus | grep -q 'active'"]
       interval: 10s
@@ -48,6 +57,7 @@ services:
     environment:
       HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
       CLUSTER_NAME: hadoop-cluster
+      TZ: America/Mexico_City
     networks:
       - hadoop_net
     volumes:
@@ -82,6 +92,7 @@ services:
       HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
       YARN_CONF_DIR: /opt/hadoop/etc/hadoop
       CLUSTER_NAME: hadoop-cluster
+      TZ: America/Mexico_City
     networks:
         - hadoop_net
     entrypoint: ["bash", "-c", "exec yarn resourcemanager"]  # 👈 Anula el entrypoint original
@@ -115,12 +126,15 @@ services:
       HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
       YARN_CONF_DIR: /opt/hadoop/etc/hadoop
       CLUSTER_NAME: hadoop-cluster
+      TZ: America/Mexico_City
     networks:
       - hadoop_net
     entrypoint: ["bash", "-c", "exec yarn nodemanager"]
     volumes:
       - ./docker/compose/configs:/opt/hadoop/etc/hadoop:ro
       - hadoop_yarn_logs:/hadoop/yarn/logs
+    ports:
+      - "8042:8042"
     depends_on:
       - resourcemanager
     deploy:
@@ -131,6 +145,8 @@ services:
   zoo:
     image: zookeeper:3.6
     container_name: zoo
+    environment:
+      TZ: America/Mexico_City
     ports:
       - "2181:2181"  # Puerto expuesto para Zookeeper
     networks:
@@ -156,6 +172,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
       # Listener interno para comunicación entre brokers
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      TZ: America/Mexico_City
     networks:
       - hadoop_net
   kafka_manager:
@@ -179,6 +196,7 @@ services:
       - "TZ=Europe/Amsterdam"
       - "POSTGRES_USER=shopping_cart"
       - "POSTGRES_PASSWORD=shopping_cart"
+      - "TZ=America/Mexico_City"
     ports:
       - "5432:5432"  # credentials (shopping_cart:shopping_cart)
     volumes:
@@ -199,12 +217,15 @@ services:
       - YARN_CONF_DIR=/opt/bitnami/spark/conf
       - SPARK_MASTER=yarn
       - SPARK_SUBMIT_OPTIONS="--conf spark.jars.ivy=/tmp/.ivy2"  # Solución Ivy
+      - TZ=America/Mexico_City
     networks:
       - hadoop_net
     volumes:
       - ./docker/compose/configs:/opt/bitnami/spark/conf:rw  # Ruta bitnami
+      - ~/bigdata_platform/scripts:/opt/scripts
     ports:
       - "4040:4040"  # Spark UI
+      - "7077:7077"  # Spark UI
     healthcheck:
       test: ["CMD-SHELL", "netstat -tuln | grep 4040 || exit 1"]  # Más eficiente que curl
       interval: 10s
@@ -215,28 +236,68 @@ services:
         limits:
           cpus: '2'
           memory: 4GB
+
     command: >
       bash -c "
       until ping -c1 resourcemanager &>/dev/null; do
         echo 'Esperando a ResourceManager...';
         sleep 5;
       done;
+
+      /opt/bitnami/spark/sbin/start-master.sh &&
+      /opt/bitnami/spark/sbin/start-worker.sh spark://spark:7077 &&
+
+      echo 'Configuraciones terminadas';
       tail -f /dev/null"
 
+
+
+#    command: >
+#      bash -c "
+#      until ping -c1 resourcemanager &>/dev/null; do
+#        echo 'Esperando a ResourceManager...';
+#        sleep 5;
+#      done;
+#      tail -f /dev/null"
+
   jupyter-scala:
-      container_name:jupyter-scala
-      image: jupyter/all-spark-notebook:latest  # Ya incluye Toree
-      ports:
-        - "8888:8888"
-      volumes:
-        - ./notebooks:/home/jovyan/work  # Tus notebooks aquí
-        - ~/.ivy2:/home/jovyan/.ivy2     # Cache de dependencias
-      environment:
-        - SPARK_MASTER=yarn://resourcemanager:8032  # Usa tu cluster YARN
-      depends_on:
-        - spark
-      networks:
-        - hadoop_net
+    hostname: jupyter
+    container_name: jupyter-scala
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-jupyter  # Usa tu Dockerfile personalizado
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ~/.ivy2:/home/jovyan/.ivy2
+      - ~/bigdata_platform/scripts:/home/jovyan/scripts
+    environment:
+      - SPARK_MASTER=yarn://resourcemanager:8032
+      - TZ=America/Mexico_City
+    depends_on:
+      - spark
+    networks:
+      - hadoop_net
+
+
+
+#  jupyter-scala:
+#      container_name:jupyter-scala
+#      image: jupyter/all-spark-notebook:latest  # Ya incluye Toree
+#      ports:
+#        - "8888:8888"
+#      volumes:
+#        - ./notebooks:/home/jovyan/work  # Tus notebooks aquí
+#        - ~/.ivy2:/home/jovyan/.ivy2     # Cache de dependencias
+#      environment:
+#        - SPARK_MASTER=yarn://resourcemanager:8032  # Usa tu cluster YARN
+#      depends_on:
+#        - spark
+#      networks:
+#        - hadoop_net
+
+
 
 
 volumes:
