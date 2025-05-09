@@ -32,6 +32,10 @@ services:
         hdfs namenode -format;
       fi;
       exec hdfs namenode"
+#    command: >
+#      bash -c "
+#      hdfs namenode -format -force || true;
+#      exec hdfs namenode"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus | grep -q 'active'"]
       interval: 10s
@@ -64,6 +68,7 @@ services:
         limits:
           cpus: '2'
           memory: 1GB
+    # Nuevo
     command: >
       bash -c "
       while ! curl -sf http://namenode:9870/ >/dev/null; do
@@ -137,6 +142,64 @@ services:
         limits:
           cpus: '6'
           memory: 12GB
+  zoo:
+    image: zookeeper:3.6
+    container_name: zoo
+    environment:
+      TZ: America/Mexico_City
+    ports:
+      - "2181:2181"  # Puerto expuesto para Zookeeper
+    networks:
+      - hadoop_net
+
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.2.1
+    container_name: kafka
+    depends_on:
+      - zoo
+    ports:
+      - "9092:9092"  # Mapeo para acceso externo (OUTSIDE)
+      - "9093:9093"  # Opcional: solo si usas OUTSIDE en 9093
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zoo:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"      
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093      
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093      
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT      
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      TZ: America/Mexico_City
+    networks:
+      - hadoop_net
+  kafka_manager:
+    image: hlebalbau/kafka-manager:2.0.0.2
+    container_name: kafka_manager
+    ports:
+      - "9001:9000"
+    environment:
+      - ZK_HOSTS=zoo:2181
+      - KAFKA_MANAGER_AUTH_ENABLED=true
+      - KAFKA_MANAGER_USERNAME=hai
+      - KAFKA_MANAGER_PASSWORD=hai
+    command: -Dpidfile.path=/dev/null
+    networks:
+      - hadoop_net
+
+  postgres:
+    image: postgres:latest
+    container_name: shopping_cart_postgres
+    environment:
+      - "TZ=Europe/Amsterdam"
+      - "POSTGRES_USER=shopping_cart"
+      - "POSTGRES_PASSWORD=shopping_cart"
+      - "TZ=America/Mexico_City"
+    ports:
+      - "5432:5432"  # credentials (shopping_cart:shopping_cart)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hadoop_net
+
 
   spark:
     container_name: spark_container
@@ -145,22 +208,22 @@ services:
       dockerfile: ./docker/files/Dockerfile-spark
     hostname: spark
     environment:
-      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
-      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf  # Corregido para bitnami
+      - HADOOP_CONF_DIR=/opt/bitnami/spark/conf  # Usa la misma ruta que el Dockerfile
       - YARN_CONF_DIR=/opt/bitnami/spark/conf
       - SPARK_MASTER=yarn
-      - SPARK_SUBMIT_OPTIONS="--conf spark.jars.ivy=/tmp/.ivy2"
+      - SPARK_SUBMIT_OPTIONS="--conf spark.jars.ivy=/tmp/.ivy2"  # Solución Ivy
       - TZ=America/Mexico_City
     networks:
       - hadoop_net
     volumes:
-      - ./docker/compose/configs:/opt/bitnami/spark/conf:rw
+      - ./docker/compose/configs:/opt/bitnami/spark/conf:rw  # Ruta bitnami
       - ~/bigdata_platform/scripts:/opt/scripts
     ports:
-      - "4040:4040"
-      - "7077:7077"
+      - "4040:4040"  # Spark UI
+      - "7077:7077"  # Spark UI
     healthcheck:
-      test: ["CMD-SHELL", "netstat -tuln | grep 4040 || exit 1"]
+      test: ["CMD-SHELL", "netstat -tuln | grep 4040 || exit 1"]  # Más eficiente que curl
       interval: 10s
       timeout: 2s
       retries: 10
@@ -183,12 +246,13 @@ services:
       echo 'Configuraciones terminadas';
       tail -f /dev/null"
 
+
   jupyter-scala:
     hostname: jupyter
     container_name: jupyter-scala
     build:
       context: .
-      dockerfile: ./docker/files/Dockerfile-jupyter
+      dockerfile: ./docker/files/Dockerfile-jupyter  # Usa tu Dockerfile personalizado
     ports:
       - "8888:8888"
     volumes:
@@ -203,150 +267,11 @@ services:
     networks:
       - hadoop_net
 
-#NUEVA VERSION
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    hostname: zookeeper
-    container_name: zookeeper
-    ports:
-      - '2181:2181'
-    environment:
-      TZ: America/Mexico_City
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    healthcheck:
-      test: echo srvr | nc zookeeper 2181 || exit 1
-      start_period: 10s
-      retries: 20
-      interval: 10s
-    networks:
-      - hadoop_net
-
-  broker:
-    image: confluentinc/cp-kafka:7.4.0
-    hostname: broker
-    container_name: broker
-    ports:
-      - '29092:29092'
-      - '9092:9092'
-      - '9101:9101'
-    environment:
-      TZ: America/Mexico_City
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      ALLOW_PLAINTEXT_LISTENER: "yes"   #PROBAR
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092 #PROBAR            
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_JMX_PORT: 9101
-      KAFKA_JMX_HOSTNAME: localhost
-      #KAFKA_JMX_HOSTNAME: broker #Verificar si necesitamos acceder como cliente
-    healthcheck:
-      test: nc -z broker 9092 || exit -1
-      start_period: 15s
-      interval: 5s
-      timeout: 10s
-      retries: 10
-    networks:
-      - hadoop_net
-
-  control-center:
-    image: confluentinc/cp-enterprise-control-center:7.4.0
-    hostname: control-center
-    container_name: control-center
-    depends_on:
-      broker:
-        condition: service_healthy
-    ports:
-      - "9021:9021"
-    environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:29092'
-      CONTROL_CENTER_REPLICATION_FACTOR: 1
-      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
-      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
-      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
-      CONFLIENT_METRICS_ENABLE: 'false'
-      PORT: 9021
-    networks:
-      - hadoop_net
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://control-center:9021/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  debezium:
-    image: debezium/connect:2.5
-    container_name: debezium
-    hostname: debezium
-    depends_on:
-      postgres:
-        condition: service_healthy
-      broker:
-        condition: service_healthy
-    ports:
-      - '8093:8083'
-    environment:
-      BOOTSTRAP_SERVERS: broker:29092
-      CONNECT_REST_ADVERTISED_HOST_NAME: debezium
-      GROUP_ID: 1
-      CONFIG_STORAGE_TOPIC: connect_configs
-      STATUS_STORAGE_TOPIC: connect_statuses
-      OFFSET_STORAGE_TOPIC: connect_offsets
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      ENABLE_DEBEZIUM_SCRIPTING: 'true'
-    healthcheck:
-      test:
-        [ 'CMD', 'curl', '--silent', '--fail', '-X', 'GET', 'http://debezium:8083/connectors', ]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - hadoop_net
-
-  debezium-ui:
-    image: debezium/debezium-ui:latest
-    container_name: debezium-ui
-    hostname: debezium-ui
-    depends_on:
-      debezium:
-        condition: service_healthy
-    ports:
-      - '8080:8080'
-    environment:
-      KAFKA_CONNECT_URIS: http://debezium:8083
-    networks:
-      - hadoop_net
-
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    hostname: postgres
-    ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: financial_db
-    command: [ 'postgres', '-c', 'wal_level=logical' ]
-    healthcheck:
-      test: [ 'CMD', 'psql', '-U', 'postgres', '-c', 'SELECT 1' ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - hadoop_net
 
 volumes:
   hadoop_namenode:
   hadoop_datanode:
-  hadoop_yarn_logs:  
+  hadoop_yarn_logs:
+  postgres_data:
   spark_logs:

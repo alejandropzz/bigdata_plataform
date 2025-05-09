@@ -14,29 +14,24 @@ RUN wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/2.2.1/kaf
 USER root
 RUN mkdir -p /opt/spark/jars/
 RUN wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/2.2.1/kafka-clients-2.2.1.jar -P /opt/spark/jars/
-RUN apt update && apt install -y iputils-ping
+
+#Bibliotecas
+#RUN apt update && apt install -y iputils-ping
+#RUN pip install faker
+
+#RUN pip install psycopg2
+
+
+# Instala las bibliotecas necesarias (como iputils-ping, faker y psycopg2)
+RUN apt update && apt install -y iputils-ping libpq-dev
+RUN pip install faker
+
+# Instalar psycopg2, con las dependencias necesarias (libpq-dev)
+RUN pip install psycopg2
+
+# Alternativa sin las dependencias si prefieres usar psycopg2-binary (opcional)
+# RUN pip install psycopg2-binary
+
 
 USER jovyan
-
-
-
-
-
-#RUN echo '{"argv": ["/opt/conda/bin/scala", "-classpath", "/path/to/kafka-clients-2.2.1.jar", "-jar", "/opt/conda/lib/python3.11/site-packages/toree-assembly-0.5.0-incubating.jar"], "display_name": "Scala (Apache Toree)", "language": "scala"}' > ~/.local/share/jupyter/kernels/apache_toree_scala/kernel.json
-
-
-
-#No funciona
-#Probando con conda
-#FROM jupyter/all-spark-notebook:latest
-#RUN /bin/bash -c "source /opt/conda/bin/activate base && pip install kafka-python"
-#RUN conda install -c conda-forge scala
-#RUN pip install toree
-#RUN jupyter toree install --user
-#RUN wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/2.2.1/kafka-clients-2.2.1.jar -P /tmp && \
-#    mv /tmp/kafka-clients-2.2.1.jar /opt/conda/lib/python3.11/site-packages/
-# Configurar el kernel.json
-#RUN echo '{"argv": ["/opt/conda/bin/scala", "-classpath", "/opt/conda/lib/python3.11/site-packages/kafka-clients-2.2.1.jar", "-jar", "/opt/conda/lib/python3.11/site-packages/toree-assembly-0.5.0-incubating.jar"], "display_name": "Scala (Apache Toree)", "language": "scala"}' > ~/.local/share/jupyter/kernels/apache_toree_scala/kernel.json
-
-
 
