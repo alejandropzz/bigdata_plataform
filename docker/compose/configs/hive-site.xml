@@ -1,0 +1,35 @@
+<configuration>
+  <!-- Conexión metastore -->
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://hive-metastore:9083</value>
+  </property>
+  
+  <!-- Configuración JDBC PostgreSQL -->
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:postgresql://hive-postgres:5432/metastore</value>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.postgresql.Driver</value>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>hive_user</value>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>mypassword</value>
+  </property>
+  
+  <!-- Configuraciones adicionales críticas -->
+  <property>
+    <name>datanucleus.autoCreateSchema</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>datanucleus.fixedDatastore</name>
+    <value>false</value>
+  </property>
+</configuration>

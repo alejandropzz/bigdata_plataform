@@ -1,0 +1,31 @@
+# Dockerfile-hive-metastore
+#FROM bde2020/hive:2.3.2-postgresql-metastore
+
+# Copia el archivo de configuración personalizado
+#COPY hive-site.xml /opt/hive/conf/
+
+# Asegura que el driver PostgreSQL esté presente (opcional, la imagen base ya lo incluye)
+# COPY postgresql-42.2.5.jar /opt/hive/lib/
+
+# Establece variables de entorno para el esquema (redundantes con docker-compose pero útiles)
+#ENV DB_TYPE=postgres \
+#    DB_URI=jdbc:postgresql://hive-postgres:5432/metastore \
+#    DB_USER=hive_user \
+#    DB_PASS=mypassword
+
+# Script de inicialización personalizado
+#COPY init-hive.sh /usr/local/bin/
+#RUN chmod +x /usr/local/bin/init-hive.sh
+
+#ENTRYPOINT ["/usr/local/bin/init-hive.sh"]
+
+
+FROM bde2020/hive:2.3.2-postgresql-metastore
+
+COPY ./docker/compose/configs/hive-site.xml /opt/hive/conf/
+COPY ./docker/compose/configs/init-hive.sh /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/init-hive.sh && \
+    ln -s /opt/hive/bin/hive /usr/bin/hive
+
+ENTRYPOINT ["/usr/local/bin/init-hive.sh"]

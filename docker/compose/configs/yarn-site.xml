@@ -39,4 +39,20 @@
     <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>
     <value>0.8</value>  <!-- Permite más contenedores concurrentes -->
   </property>
+  <property>
+  <name>yarn.resourcemanager.scheduler.address</name>
+  <value>resourcemanager:8030</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.resource-tracker.address</name>
+    <value>resourcemanager:8031</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.address</name>
+    <value>resourcemanager:8032</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.admin.address</name>
+    <value>resourcemanager:8033</value>
+  </property>
 </configuration>
