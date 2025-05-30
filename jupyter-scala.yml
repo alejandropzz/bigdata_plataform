@@ -1,0 +1,39 @@
+version: '3.7'
+
+networks:
+  bigdata_network:
+    driver: bridge
+    external: true
+
+services:  
+  jupyter-scala:
+    hostname: jupyter
+    container_name: jupyter-scala
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ~/.ivy2:/home/jovyan/.ivy2
+      - ~/bigdata_platform/scripts:/home/jovyan/scripts
+    environment:
+      - SPARK_MASTER=yarn://resourcemanager:8032
+      - TZ=America/Mexico_City    
+    networks:
+      - bigdata_network
+      
+  scala-compiler:
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-scala
+    container_name: scala-compiler
+    volumes:
+      - ~/bigdata_platform/scripts:/opt/scripts
+      - ~/bigdata_platform/jars:/opt/jars
+    command: tail -f /dev/null  
+    networks:
+      - bigdata_network
+
+

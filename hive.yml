@@ -1,0 +1,76 @@
+version: '3.7'
+
+networks:
+  bigdata_network:
+    driver: bridge
+    external: true
+
+services:  
+  
+  hive-postgres:
+    image: postgres:15-alpine  # Oficial + ligero
+    container_name: hive-postgres
+    hostname: hive-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hive_user -d metastore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - TZ=America/Mexico_City
+      - POSTGRES_USER=hive_user
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=metastore
+      - POSTGRES_HOST_AUTH_METHOD=trust  # ¡Clave!
+    volumes:
+      - hive_metastore_data:/var/lib/postgresql/data
+    ports:
+      - "55432:5432"  # Buen puerto custom
+    networks:
+      - bigdata_network
+
+  hive-metastore:
+    container_name: hive-metastore
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-hive-metastore
+    hostname: hive-metastore
+    env_file:
+      - ./docker/compose/configs/hadoop-hive.env
+    environment:
+      TZ: America/Mexico_City
+      SERVICE_PRECONDITION: "namenode:9000 hive-postgres:5432"  
+      DB_TYPE: postgres
+      DB_URI: jdbc:postgresql://hive-postgres:5432/metastore
+      DB_USER: hive_user
+      DB_PASS: mypassword
+    ports:
+      - "9083:9083"
+    restart: unless-stopped
+    depends_on:
+      hive-postgres:
+        condition: service_started
+      namenode:
+        condition: service_started
+    networks:
+      - bigdata_network
+  
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    container_name: hive-server
+    env_file:
+      - ./docker/compose/configs/hadoop-hive.env
+    depends_on:
+      hive-metastore:
+        condition: service_started
+    environment:
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    ports:
+      - "10000:10000"
+    command: /opt/hive/bin/hiveserver2
+    restart: unless-stopped
+    networks:
+      - bigdata_network
+
+volumes:  
+  hive_metastore_data:

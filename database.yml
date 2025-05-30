@@ -1,0 +1,56 @@
+version: '3.7'
+
+networks:
+  bigdata_network:
+    driver: bridge
+    external: true
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    hostname: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      TZ: America/Mexico_City
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: financial_db
+    command: [ 'postgres', '-c', 'wal_level=logical' ]
+    healthcheck:
+      test: [ 'CMD', 'psql', '-U', 'postgres', '-c', 'SELECT 1' ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bigdata_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-container
+    hostname: mysql
+    environment:
+      TZ: America/Mexico_City
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    command: --binlog-format=ROW
+    networks:
+      - bigdata_network
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    hostname: mongo
+    environment:
+      - TZ=America/Mexico_City
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - bigdata_network
+
+volumes:
+  mongo_data:

@@ -28,6 +28,7 @@ RUN pip install faker
 
 # Instalar psycopg2, con las dependencias necesarias (libpq-dev)
 RUN pip install psycopg2
+RUN pip install mysql-connector-python
 
 # Alternativa sin las dependencias si prefieres usar psycopg2-binary (opcional)
 # RUN pip install psycopg2-binary

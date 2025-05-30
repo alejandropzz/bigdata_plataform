@@ -1,0 +1,15 @@
+FROM apache/flink:1.19.2-scala_2.12-java11
+
+WORKDIR /opt/flink
+
+ENV FLINK_CLASSPATH=/opt/flink/usrlib/*
+
+RUN mkdir -p /opt/flink/lib
+
+RUN curl -fSL https://dlcdn.apache.org/flink/flink-cdc-3.4.0/flink-cdc-3.4.0-bin.tar.gz -o flink-cdc.tar.gz \
+    && tar -xzf flink-cdc.tar.gz -C /opt/flink/lib --strip-components=1 \
+    && rm flink-cdc.tar.gz
+
+EXPOSE 8081
+
+CMD ["jobmanager"]
