@@ -1,0 +1,15 @@
+FROM alpine:latest
+
+RUN apk add --no-cache bash postgresql-client
+
+COPY ./trigger_bash/postgres/setup-triggers.sh /setup-triggers.sh
+COPY ./trigger_bash/postgres/schema-ddl.conf /schema-ddl.conf
+COPY ./trigger_bash/postgres/.env.postgres /.env.postgres
+COPY ./trigger_bash/postgres/.env.tableconf /.env.tableconf
+
+
+RUN chmod +x /setup-triggers.sh
+
+USER root
+
+CMD ["/bin/sh", "-c", "/setup-triggers.sh"]

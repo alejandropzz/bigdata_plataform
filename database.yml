@@ -26,6 +26,18 @@ services:
     networks:
       - bigdata_network
 
+  trigger-setup-postgres:    
+    build:
+      context: .
+      dockerfile: ./docker/files/Dockerfile-trigger-setup-postgres
+    container_name: trigger-setup-postgres
+    depends_on:
+      postgres:
+        condition: service_healthy            
+    networks:
+      - bigdata_network
+    restart: "no"
+
   mysql:
     image: mysql:8.0
     container_name: mysql-container

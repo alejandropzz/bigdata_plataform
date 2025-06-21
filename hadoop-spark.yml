@@ -158,6 +158,7 @@ services:
     volumes:
       - ./docker/compose/configs:/opt/bitnami/spark/conf:rw
       - ~/bigdata_platform/scripts:/opt/scripts
+      - ~/bigdata_platform/cdc_scd_scripts:/opt/cdc_scd_scripts
       - ~/bigdata_platform/jars:/opt/jars
     ports:
       - "4040:4040"
